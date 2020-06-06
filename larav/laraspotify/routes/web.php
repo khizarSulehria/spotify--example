@@ -70,13 +70,23 @@ Route::get('/current-follow-user/{follow_user_id}/{user_id}', 'UserController@fo
 Route::get('/check-user-following/{type}/{user_id}/{ids}', 'UserController@checkCurrentUserFollowing');
 
 
+Route::get('/follow-bulk-playlist', 'UserController@followBulkAction');
+
+
+Route::get('/get-all-users-playlist', 'UserController@getAllUsersPlaylist');
+
+
+Route::get('/follow-users-artist', 'UserController@followBulkArtist');
+
+
+
 
 Route::get('/spotify-login-1', function () {
 	$session = new SpotifyWebAPI\Session(
 	    env('SPOTIFY_KEY'),
 	    env('SPOTIFY_SECRET'),
 		env('SPOTIFY_REDIRECT_URI')
-	);   
+	);
 	//die(env('SPOTIFY_REDIRECT_URI'));
 	$api = new SpotifyWebAPI\SpotifyWebAPI();
 
@@ -104,7 +114,7 @@ Route::get('/user/{id}', function () {
 	    env('SPOTIFY_KEY'),
 	    env('SPOTIFY_SECRET'),
 		env('SPOTIFY_REDIRECT_URI')
-	);   
+	);
 
 	$api = new SpotifyWebAPI\SpotifyWebAPI();
 

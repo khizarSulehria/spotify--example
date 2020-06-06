@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\CreateBulkPlaylist;
+use App\Jobs\FollowBulkTOFollowArtist;
+use App\Jobs\FollowPlaylist;
+use App\Playlist;
 use Illuminate\Http\Request;
 use SpotifyWebAPI\Session;
 use SpotifyWebAPI\SpotifyWebAPI;
@@ -111,12 +115,92 @@ class UserController extends Controller
 
 	public function checkCurrentUserFollowing($type,$user_id,$ids){
 		$user = User::find($user_id);
-		$idArray = [$ids];	
-
+		$idArray = [$ids];
 		$this->thisWebApi->setAccessToken($user->access_token);
 		$playlists = $this->thisWebApi->currentUserFollows($type,$idArray);
-		dd($playlists);	
+		dd($playlists);
 	}
+
+
+	public function followBulkAction(){
+	    $users = User::pluck("email");
+        FollowPlaylist::dispatchNow($this->thisWebApi,$this->thisSession);
+        //CreateBulkPlaylist::dispatchNow($this->thisWebApi,$this->thisSession);
+	    return "";
+    }
+
+    public function getAllUsersPlaylist(){
+	    $users = User::all();
+	    $data = [];
+        foreach ($users as $user){
+            if(!empty($user->access_token)){
+                try {
+                    $this->thisWebApi->setAccessToken($user->access_token);
+                    $this->thisWebApi->me();
+                }catch(SpotifyWebAPIException $e){
+                    if($e->getCode() == 401){
+                        $request = $this->thisSession->refreshAccessToken($user->refresh_token);
+                        $newToken = $this->thisSession->getAccessToken();
+                        $refresh = $this->thisSession->getRefreshToken();
+                        $this->thisWebApi->setAccessToken($newToken);
+                        $user->access_token = $newToken;
+                        $user->refresh_token = $refresh;
+                        $user->save();
+                    }
+                }
+
+                $dataobj = ($this->thisWebApi->getUserPlaylists($user->spotify_id, [
+                    'limit' => 3
+                ]));
+                if(count($dataobj->items) > 0){
+                    $i = 1;
+                      foreach($dataobj->items as $item){
+                         /*var_dump($item->id);
+                          $this->thisWebApi->updatePlaylist($item->id, [
+                              'name' => 'my ' . $user->name . " playlist " . $i
+                          ]);
+                          $i++;
+
+                                             */
+
+                        Playlist::updateOrCreate([
+                            'user_id' => $user->id,
+                            'playlist_id' => $item->id,
+                         ],[
+                            'user_id' => $user->id,
+                            'playlist_id' => $item->id,
+                        ]);
+                      }
+                }
+
+                $data[] = $dataobj;
+            }
+
+        }
+        dd($data);
+        return "";
+    }
+
+    public function addSongIntoPlaylist($id){
+        $user = User::find($id);
+
+	    $song_id = "7hp9DhEqfiffC2W5hNEPDl"; // "spotify:track:7hp9DhEqfiffC2W5hNEPDl"
+        $playlistId = "3t0GWOU1mkEDBoJ00m2iCq";
+
+
+
+        $this->thisWebApi->setAccessToken($user->access_token);
+        $playlists = $this->thisWebApi->addPlaylistTracks($playlistId, [
+            $song_id,
+        ]);
+
+        return "";
+    }
+
+    public function followBulkArtist(){
+        FollowBulkTOFollowArtist::dispatch($this->thisWebApi,$this->thisSession);
+        return "follow Bulk";
+    }
 
 
 }
